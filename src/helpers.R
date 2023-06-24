@@ -159,20 +159,30 @@ get.summary <- function(training.set, testing.set) {
 #' @param fn        A transformation function that takes in a feature vector
 #'                   and returns a transformed feature vector.
 #' @param size      A promised image size after the transformation.
+#' @param seed      A seed used to generate seeds upon transformation.
+#'                  This is helpful for augmentation reproducibility.
 #'
 #' @return          A transformed data set.
-transform.set <- function(data.set, fn, size = NULL, ...) {
+transform.set <- function(data.set, fn, size = NULL, seed = NULL, ...) {
     # get columns for image pixels ONLY
     image.set <- data.set |>
         select_if(is.numeric) |>
         as.matrix()
     # get image dimension
     image.dim <- if (is.null(size)) ncol(image.set) else size
+    # generate seeds
+    if (!is.null(seed)) {
+        set.seed(seed)
+        seeds <- sample(1:100000, nrow(data.set))
+    }
     # a new matrix to store transformed images
     new.set <- matrix(, nrow = 0, ncol = image.dim,
                       dimnames = list(NULL, paste0('X', 1:image.dim)))
     # transform each image of the set
     for (i in seq_len(nrow(data.set))) {
+        if (!is.null(seed)) {
+            set.seed(seeds[i])
+        }
         transformed <- image.set[i, ] |>
             fn(...)
         # add to new set
@@ -195,10 +205,11 @@ transform.set <- function(data.set, fn, size = NULL, ...) {
 #' @param data.set  A data set to be augmented.
 #' @param fn        A transformation function that takes in a matrix and
 #'                   outputs a matrix.
+#' @param seed      A seed used to generate seeds upon transformation.
 #' @param ...       Variadic arguments passed to `fn`.
 #'
 #' @return          An augmented data set.
-augment.set <- function(data.set, fn, ...) {
+augment.set <- function(data.set, fn, seed = NULL, ...) {
     # get image size
     image.size <- ncol(data.set |> select_if(is.numeric))
     
@@ -208,7 +219,7 @@ augment.set <- function(data.set, fn, ...) {
             as.image.matrix(ncol = sqrt(image.size)) |>
             fn(...) |>
             as.feature.vector()
-    }, ...)
+    }, seed = seed, ...)
 }
 
 
